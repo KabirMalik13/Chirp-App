@@ -1572,9 +1572,22 @@ function createConversationElement(convoData) {
     const unreadBadge = convoData.unread_count > 0 
         ? `<span class="unread-badge">${convoData.unread_count}</span>` 
         : '';
-        
+    
+    let profileImageUrl = '/static/uploads/default-avatar.jpg';
+    
+    // Use the correct data object: convoData
+    if (convoData.profile_image && convoData.profile_image.trim() !== '') {
+        // If profile_image already starts with 'static/', don't add it again
+        if (convoData.profile_image.startsWith('static/')) {
+            profileImageUrl = `/${convoData.profile_image}`;
+        } else {
+            profileImageUrl = `/static/${convoData.profile_image}`;
+        }
+    }
+
     div.innerHTML = `
-        <div class="convo-avatar"></div> 
+        <div class="convo-avatar" style="background-image: url('${profileImageUrl}'); background-size: cover; background-position: center;">
+        </div> 
         <div class="convo-content">
             <div class="convo-header">
                 <strong>@${convoData.partner_username}</strong>
@@ -1736,8 +1749,20 @@ function createSearchResultItem(userData) {
         updateChatView(userData.username);
     };
 
+    let profileImageUrl = '/static/uploads/default-avatar.jpg';
+    
+    if (userData.profile_image && userData.profile_image.trim() !== '') {
+        // If profile_image already starts with 'static/', don't add it again
+        if (userData.profile_image.startsWith('static/')) {
+            profileImageUrl = `/${userData.profile_image}`;
+        } else {
+            profileImageUrl = `/static/${userData.profile_image}`;
+        }
+    }
+
     div.innerHTML = `
-        <div class="convo-avatar"></div> 
+        <div class="convo-avatar" style="background-image: url('${profileImageUrl}'); background-size: cover; background-position: center;">
+        </div>
         <div class="convo-content">
             <strong>@${userData.username}</strong>
             <span class="convo-time">Start New Chat</span>
