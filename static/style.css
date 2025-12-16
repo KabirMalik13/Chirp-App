@@ -1128,6 +1128,18 @@ body {
     background-color: var(--text-color-secondary);
 }
 
+.unread-badge {
+    margin-left: auto;   /* 👈 pushes it to the far right */
+    background-color: #1da1f2;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    min-width: 22px;
+    text-align: center;
+}
+
 /* --- CHAT HEADER & BACK BUTTON --- */
 
 .chat-header {
