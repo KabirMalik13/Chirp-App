@@ -12,7 +12,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a_super_secret_key' 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chirp.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-UPLOAD_FOLDER = 'static/uploads'
+basedir = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_FOLDER = os.path.join(basedir, 'static/uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 
@@ -184,7 +185,7 @@ def upload_profile_image():
     
     try:
         ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"profile_{current_user.id}_{datetime.utcnow().timestamp()}.{ext}"
+        filename = secure_filename(f"profile_{current_user.id}_{int(datetime.utcnow().timestamp())}.{ext}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
         file.save(filepath)
@@ -195,7 +196,7 @@ def upload_profile_image():
         return jsonify({
             'success': True,
             'message': 'Profile image updated',
-            'image_url': f"/static/uploads/{filename}"
+            'image_url': url_for('static', filename=f"uploads/{filename}")
         })
     
     except Exception as e:
@@ -219,9 +220,10 @@ def upload_banner_image():
     
     try:
         ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"banner_{current_user.id}_{datetime.utcnow().timestamp()}.{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        timestamp = int(datetime.utcnow().timestamp())
+        filename = secure_filename(f"banner_{current_user.id}_{timestamp}.{ext}")
         
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
         current_user.banner_image = f"uploads/{filename}"
@@ -230,7 +232,7 @@ def upload_banner_image():
         return jsonify({
             'success': True,
             'message': 'Banner image updated',
-            'image_url': f"/static/uploads/{filename}"
+            'image_url': url_for('static', filename=f"uploads/{filename}")
         })
     
     except Exception as e:
