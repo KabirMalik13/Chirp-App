@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="timeline">
+    
+    <div class="profile-page-header">
+        <a href="{{ url_for('profile', username=target_username) }}" style="color: var(--text-color);">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="header-text">
+            <h2>{{ target_username }}</h2>
+            <p>{{ view_type | capitalize }}</p> 
+        </div>
+    </div>
+
+    <div class="search-container">
+        {% if view_type == 'following' %}
+        <form id="user-search-form" class="search-form">
+            <input type="text" id="search-input" placeholder="Search users by username" required>
+            <button type="submit" class="primary-button">Search</button>
+        </form>
+        <div id="search-results-container">
+            </div>
+        {% elif view_type == 'followers' %}
+        <div style="display: flex; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border-color);">
+            <input 
+                type="text" 
+                id="followers-search-input" 
+                placeholder="Search followers by username..." 
+                style="flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 20px; background-color: var(--secondary-color); color: var(--text-color); outline: none;"
+            />
+            <button 
+                id="followers-search-btn" 
+                class="primary-button" 
+                style="padding: 10px 20px; border-radius: 20px;"
+            >
+                Search
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="relationships-list-container" class="relationships-list-container">
+        <p style="padding: 20px; text-align: center;">Loading {{ view_type }}...</p>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="messages-page-wrapper" data-partner-username="{{ partner_username if partner_username }}">
+    <div class="messages-layout-container">
+
+        <div class="messages-inbox-panel">
+            <h2 class="panel-header">Messages</h2>
+
+            <form id="new-message-search-form" class="message-search-form">
+                <input 
+                    type="text" 
+                    id="new-message-search-input" 
+                    placeholder="Search people"
+                >
+            </form>
+
+            <div id="conversation-list" class="conversation-list">
+                <div id="conversations-list-container">
+                </div>
+            </div>
+
+            <div id="search-results-list" class="search-results-list" style="display: none;">
+            </div>
+            
+        </div>
+
+        <div class="message-chat-panel">
+
+            <div class="chat-header">
+                <a href="{{ url_for('messages') }}" class="back-button">
+                    <i class="fas fa-arrow-left"></i> 
+                </a>
+                <h3>{% if partner_username %}@{{ partner_username }}{% else %}Select a Message{% endif %}</h3>
+            </div>
+            
+            <div id="message-history-container" class="message-history-container">
+                {% if not partner_username %}
+                <div class="chat-empty-space messages-empty-state">
+                    <h3>Select a Message</h3>
+                    <p>Choose an existing conversation or search for someone to start a new private message.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <form id="send-message-form" class="send-message-form">
+                <input 
+                    type="text" 
+                    id="message-input" 
+                    placeholder="Start a new message..." 
+                    required
+                >
+                <button type="submit">Send</button>
+            </form> 
+            
+        </div>
+
+    </div>
+</div>
+{% endblock %}

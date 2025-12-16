@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+    <h2 style="margin-left: 20px; margin-top: 10px;"> Home </h2>
+    
+    <div class="new-chirp-container">
+        <form id="new-chirp-form">
+            <textarea id="chirp-content" name="content" placeholder="What's happening?"></textarea>
+            <button type="submit" class="primary-button">Chirp</button>
+            <div style="clear: both;"></div>
+        </form>
+    </div>
+
+    <div id="timeline">
+        <!-- Posts will be loaded here by app.js -->
+    </div>
+    
+    <!-- Comment Modal -->
+    <div id="comment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Comments</h3>
+            
+            <!-- Comment Form -->
+            <div class="comment-form-container">
+                <form id="comment-form">
+                    <textarea id="comment-input" placeholder="Write a comment..." required></textarea>
+                    <button type="submit" class="primary-button">Post Comment</button>
+                </form>
+            </div>
+            
+            <!-- Comments List -->
+            <div id="comments-list"></div>
+        </div>
+    </div>
+{% endblock %}

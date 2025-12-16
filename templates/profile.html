@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ target_username }}'s Profile{% endblock %}
+
+{% block content %}
+    <div class="profile-page-header" id="profile-header">
+        <div class="header-text">
+            <h2>{{ target_username }}</h2>
+            <p id="profile-post-count"></p> 
+        </div>
+    </div>
+    
+    <div id="profile-details-container"></div>
+
+    <!-- Interactive Profile Tabs -->
+    <nav class="profile-tabs">
+        <a href="#" class="tab-item active" data-tab="chirps">Chirps</a>
+        <a href="#" class="tab-item" data-tab="liked">Liked</a>
+        <a href="#" class="tab-item" data-tab="retweeted">Retweeted</a>
+        <a href="#" class="tab-item" data-tab="commented">Commented</a>
+    </nav>
+
+    <div id="profile-posts-container">
+        <!-- Posts will be loaded here by app.js based on active tab -->
+    </div>
+    
+    <!-- Comment Modal -->
+    <div id="comment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Comments</h3>
+            
+            <!-- Comment Form -->
+            <div class="comment-form-container">
+                <form id="comment-form">
+                    <textarea id="comment-input" placeholder="Write a comment..." required></textarea>
+                    <button type="submit" class="primary-button">Post Comment</button>
+                </form>
+            </div>
+            
+            <!-- Comments List -->
+            <div id="comments-list"></div>
+        </div>
+    </div>
+{% endblock %}

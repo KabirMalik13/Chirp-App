@@ -1,0 +1,24 @@
+# Flask for the main web application framework
+Flask>=2.3.0
+
+# Flask-SQLAlchemy for database integration (ORM)
+Flask-SQLAlchemy>=3.0.0
+
+# Flask-Login for user session management and authentication
+Flask-Login>=0.6.0
+
+# Werkzeug for secure password hashing (imported in models.py)
+Werkzeug>=3.0.0
+
+# Gunicorn is commonly used for deploying Flask applications to production
+gunicorn>=21.0.0
+
+# Python Dotenv to manage environment variables (like secret keys) easily
+python-dotenv>=1.0.0
+
+# Optional: SQLite or PostgreSQL/MySQL driver
+# If using SQLite (default for Flask-SQLAlchemy), no extra driver is usually needed.
+# If using PostgreSQL:
+# psycopg2-binary>=2.9.0
+# If using MySQL:
+# PyMySQL>=1.0.0
