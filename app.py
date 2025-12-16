@@ -7,17 +7,11 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import or_, desc, func
 import re
 
-# --- Flask App Initialization ---
 app = Flask(__name__)
 
-# Basic configuration
-# NOTE: Replace 'a_super_secret_key' with a strong, random key in production
 app.config['SECRET_KEY'] = 'a_super_secret_key' 
-# SQLite for development: a file named chirp.db will be created in the instance folder
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chirp.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# File upload configuration
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -28,25 +22,22 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # Redirects unauthenticated users to this route
+login_manager.login_view = 'login' 
 
-# --- User Loader (For Flask-Login) ---
 @login_manager.user_loader
 def load_user(user_id):
     """Required by Flask-Login to reload the user object from the session ID."""
     return User.query.get(int(user_id))
 
-# --- Database Setup Command ---
 @app.cli.command('init-db')
 def init_db():
     """Create all tables and a dummy user."""
     with app.app_context():
         db.create_all()
         
-        # Create a dummy user for testing the login
         if User.query.filter_by(username='testuser').first() is None:
             test_user = User(username='testuser', email='test@chirp.com')
-            test_user.set_password('password') # Password is 'password'
+            test_user.set_password('password') 
             db.session.add(test_user)
             db.session.commit()
             print("Database initialized and 'testuser' created (password: 'password').")
@@ -75,15 +66,12 @@ def login():
 @login_required 
 def timeline():
     """Serve the main timeline page."""
-    # NOTE: We are serving the static file for now. 
-    # In a real app, this would query the DB and pass data to a Jinja template.
     return render_template('timeline.html', active_page='timeline') 
 
 @app.route('/bookmarks')
 @login_required
 def bookmarks_page():
     """Serves the bookmarks view page (bookmarks.html)."""
-    # This is the function name your Jinja link is expecting!
     return render_template('bookmarks.html', active_page='bookmarks') 
 
 @app.route('/profile/<username>')
@@ -267,15 +255,13 @@ def create_post():
     new_post = Post(user_id=current_user.id, content=content)
     db.session.add(new_post)
     
-    # 1. Commit the post to the database to get the unique post ID
     db.session.commit()
 
     notifications_to_add = []
 
-    # --- A. MENTION DETECTION AND NOTIFICATION (EXISTING LOGIC) ---
     mentions = re.findall(r'@(\w+)', content)
     
-    mentioned_user_ids = set() # Use a set to track users who were mentioned
+    mentioned_user_ids = set() 
 
     if mentions:
         unique_mentioned_usernames = list(set(mentions))
@@ -283,45 +269,34 @@ def create_post():
             mentioned_user = User.query.filter_by(username=username).first()
             
             if mentioned_user and mentioned_user.id != current_user.id:
-                # Add ID to set for later exclusion from follower notifications
                 mentioned_user_ids.add(mentioned_user.id) 
                 
                 notification = Notification(
                     user_id=mentioned_user.id,
                     actor_id=current_user.id,
                     post_id=new_post.id,
-                    type='mention' # Set the type of notification
+                    type='mention' 
                 )
                 notifications_to_add.append(notification)
     
-    # --- B. NEW POST (FOLLOWER) NOTIFICATION LOGIC ---
-    
-    # Find all users currently following the author of the new post
-    # current_user.follower_relationships returns the Follow objects
     followers = current_user.follower_relationships.all()
     
     for follow_relationship in followers:
         follower_id = follow_relationship.follower_id
         
-        # EXCLUSION: Don't send a 'new_post' notification if the follower was already
-        # sent a 'mention' notification for this same post.
         if follower_id not in mentioned_user_ids:
             new_post_notification = Notification(
-                user_id=follower_id,           # The user receiving the notification
-                actor_id=current_user.id,      # The author of the post
+                user_id=follower_id,           
+                actor_id=current_user.id,      
                 post_id=new_post.id,           
-                type='new_post'                # <-- NEW TYPE
+                type='new_post'                
             )
             notifications_to_add.append(new_post_notification)
-            
-    # --- C. COMMIT ALL GENERATED NOTIFICATIONS ---
-    
+                
     if notifications_to_add:
         db.session.add_all(notifications_to_add)
         db.session.commit()
     
-    # ------------------ END INLINED LOGIC ----------------------
-
     return jsonify({
         'success': True, 
         'post': {
@@ -458,11 +433,9 @@ def delete_post(post_id):
     if not post:
         return jsonify({'success': False, 'message': 'Post not found'}), 404
     
-    # Check if current user is the author
     if post.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'You can only delete your own posts'}), 403
     
-    # Delete the post (comments and reactions will be cascade deleted)
     db.session.delete(post)
     db.session.commit()
     
@@ -729,9 +702,7 @@ def api_load_notifications():
     Fetches the current user's unread and recent notifications (mentions).
     Marks them as read upon retrieval.
     """
-    try:
-        # 1. Fetch notifications for the current user, ordered by newest first
-        # Join with the User table to get the username of the 'actor' 
+    try: 
         notifications = db.session.query(Notification, User.username.label('actor_username'))\
             .join(User, Notification.actor_id == User.id)\
             .filter(Notification.user_id == current_user.id)\
@@ -739,7 +710,6 @@ def api_load_notifications():
             .limit(50)\
             .all()
 
-        # 2. Prepare the data for JSON response
         notifications_list = []
         unread_ids = []
 
@@ -751,24 +721,19 @@ def api_load_notifications():
                 'actor_username': actor_username,
                 'type': notification.type, 
                 'is_read': notification.is_read,
-                # Use .isoformat() to send a proper string for JavaScript's Date object
                 'timestamp': notification.timestamp.isoformat() 
             })
             
-            # 3. Collect unread notification IDs to mark them as read
             if not notification.is_read:
                 unread_ids.append(notification.id)
 
-        # 4. Mark unread notifications as read in the database
         if unread_ids:
-            # Efficiently update all relevant rows in one go
             Notification.query.filter(Notification.id.in_(unread_ids)).update(
                 {'is_read': True}, 
                 synchronize_session='fetch'
             )
             db.session.commit()
 
-        # 5. Return the list of notifications
         return jsonify({
             'success': True, 
             'notifications': notifications_list
@@ -1022,8 +987,6 @@ def toggle_follow():
             'message': f'Now following {target_username}'
         })
 
-# app.py
-
 @app.route('/api/follow', methods=['GET'])
 @login_required
 def get_following():
@@ -1032,8 +995,6 @@ def get_following():
     This list will be used to populate the 'Start a new message' section.
     """
     
-    # current_user.following_relationships should be a backref defined 
-    # on your User model via your Follow model. It returns Follow objects.
     following_users = [
         follow.followed 
         for follow in current_user.following_relationships
@@ -1043,7 +1004,7 @@ def get_following():
         {
             'id': user.id,
             'username': user.username,
-            # Add any other data needed (e.g., display name, avatar URL)
+            'profile_image': user.profile_image or 'uploads/default-avatar.jpg',
         }
         for user in following_users
     ]
@@ -1062,8 +1023,6 @@ def search_users():
     if not query:
         return jsonify({'success': True, 'users': []})
 
-    # Search for users whose username starts with the query (case-insensitive)
-    # Filter out the current user to prevent self-messaging via search
     users = User.query.filter(
         User.username.ilike(f'{query}%'),
         User.id != current_user.id
@@ -1073,6 +1032,7 @@ def search_users():
         {
             'id': user.id,
             'username': user.username,
+            'profile_image': user.profile_image or 'uploads/default-avatar.jpg',
         }
         for user in users
     ]
@@ -1093,6 +1053,7 @@ def serialize_user_relationship(user_obj, current_user_id):
         'username': user_obj.username,
         'user_id': user_obj.id,
         'isFollowing': is_following,
+        'profile_image': user_obj.profile_image or 'uploads/default-avatar.jpg',
     }
 
 @app.route('/api/relationships/<view_type>/<username>', methods=['GET'])
@@ -1128,7 +1089,8 @@ def get_relationships(view_type, username):
     return jsonify({
         'success': True,
         'users': serialized_users,
-        'current_user': current_user.username 
+        'current_user': current_user.username,
+        'profile_image': current_user.profile_image or 'uploads/default-avatar.jpg',
     })
 
 
@@ -1147,22 +1109,14 @@ def search_user():
     user = User.query.filter_by(username=query).first()
     
     if user is None:
-        # NOTE: Using ilike for case-insensitive search
-        #user = User.query.filter(User.username.ilike(f'%{query}%')).first()
-        # If you only want exact match (case insensitive):
          user = User.query.filter(User.username.ilike(query)).first()
 
     if user is None:
-        return jsonify({'success': True, 'user': None}) # Return success with no user found
+        return jsonify({'success': True, 'user': None}) 
 
-    # 3. Check if the user is the current logged-in user
     if user.id == current_user.id:
-        # Optionally hide the current user from search results, or let the frontend handle the 'follow yourself' error
         return jsonify({'success': True, 'user': None})
         
-    # 4. Serialize the user data and check follow status
-    
-    # Check if the current user is following the user found in the search
     is_following = Follow.query.filter_by(
         follower_id=current_user.id,
         followed_id=user.id
@@ -1171,8 +1125,8 @@ def search_user():
     user_data = {
         'username': user.username,
         'user_id': user.id,
-        # IMPORTANT: The frontend (app.js) uses this flag to set the button text/class
         'isFollowing': is_following,
+        'profile_image': user.profile_image or 'uploads/default-avatar.jpg',
     }
     
     return jsonify({
@@ -1188,22 +1142,20 @@ def search():
     Expected usage: GET /api/search?q=query&type=users OR GET /api/search?q=query&type=chirps
     """
     query = request.args.get('q', '').strip()
-    search_type = request.args.get('type', 'users')  # Default to users
+    search_type = request.args.get('type', 'users')  
     
     if not query:
         return jsonify({'success': False, 'message': 'Search query cannot be empty'}), 400
     
     if search_type == 'users':
-        # Search for users by username (case-insensitive partial match)
         users = User.query.filter(
             User.username.ilike(f'%{query}%')
         ).filter(
-            User.id != current_user.id  # Exclude current user
+            User.id != current_user.id  
         ).limit(20).all()
         
         users_list = []
         for user in users:
-            # Check if current user is following this user
             is_following = Follow.query.filter_by(
                 follower_id=current_user.id,
                 followed_id=user.id
@@ -1223,7 +1175,6 @@ def search():
         })
     
     elif search_type == 'chirps':
-        # Search for posts by content (case-insensitive partial match)
         posts = Post.query.filter(
             Post.content.ilike(f'%{query}%')
         ).order_by(Post.timestamp.desc()).limit(20).all()
@@ -1279,8 +1230,6 @@ def search():
     else:
         return jsonify({'success': False, 'message': 'Invalid search type'}), 400
 
-# app.py (Add this new route)
-
 @app.route('/api/remove_follower', methods=['POST'])
 @login_required
 def remove_follower():
@@ -1291,7 +1240,6 @@ def remove_follower():
     data = request.get_json()
     follower_username = data.get('follower_username')
     
-    # 1. Find the user we want to remove from our followers
     target_follower = User.query.filter_by(username=follower_username).first()
 
     if target_follower is None:
@@ -1300,18 +1248,14 @@ def remove_follower():
     if target_follower.id == current_user.id:
         return jsonify({'success': False, 'message': 'Cannot remove yourself'}), 400
 
-    # 2. Find the specific Follow relationship
-    # The relationship is: target_follower (is the follower_id) follows current_user (is the followed_id)
     follow_relationship = Follow.query.filter_by(
         follower_id=target_follower.id, 
         followed_id=current_user.id 
     ).first()
 
     if follow_relationship is None:
-        # This happens if the user isn't actually following the current user
         return jsonify({'success': False, 'message': f'{follower_username} is not following you.'}), 400
 
-    # 3. Delete the relationship
     db.session.delete(follow_relationship)
     db.session.commit()
     
@@ -1330,17 +1274,15 @@ def chat_view(partner_username):
     to load that specific chat history immediately.
     """
     
-    # Optional check: ensure the partner exists before loading the template
     if partner_username:
         partner = User.query.filter_by(username=partner_username).first()
         if not partner:
-            # If user is not found, redirect to the main inbox
             return redirect(url_for('messages', partner_username=None))
     
     return render_template(
         'messages.html', 
         active_page='messages', 
-        partner_username=partner_username # <-- CRITICAL: Pass this to Jinja
+        partner_username=partner_username 
     )
 
 @app.route('/api/messages/conversations', methods=['GET'])
@@ -1350,21 +1292,16 @@ def get_conversations():
     Fetches a list of users the current user has exchanged messages with (their 'inbox').
     This is complex as it requires finding unique partners and the last message time.
     """
-    # Find all unique user IDs the current user has sent or received messages from
     partner_ids_sent = db.session.query(Message.recipient_id).filter(Message.sender_id == current_user.id)
     partner_ids_received = db.session.query(Message.sender_id).filter(Message.recipient_id == current_user.id)
     
-    # Combine and get unique partner IDs
-    # Note: This is an advanced SQL query equivalent using SQLAlchemy's union
     partner_ids_subquery = partner_ids_sent.union(partner_ids_received).distinct().subquery()
     
-    # Select User objects for these partners
     partners = User.query.filter(User.id.in_(partner_ids_subquery)).all()
     
     conversations = []
     
     for partner in partners:
-        # Find the last message between current_user and this partner
         last_message = Message.query.filter(
             or_(
                 (Message.sender_id == current_user.id) & (Message.recipient_id == partner.id),
@@ -1372,7 +1309,6 @@ def get_conversations():
             )
         ).order_by(Message.timestamp.desc()).first()
         
-        # Count unread messages *from* this partner
         unread_count = Message.query.filter_by(
             sender_id=partner.id, 
             recipient_id=current_user.id, 
@@ -1386,9 +1322,9 @@ def get_conversations():
                 'last_message_content': last_message.content,
                 'last_message_time': last_message.timestamp.isoformat(),
                 'unread_count': unread_count,
+                'profile_image': partner.profile_image or 'uploads/default-avatar.jpg',
             })
 
-    # Sort conversations by the last message time (newest first)
     conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
     
     return jsonify({'success': True, 'conversations': conversations})
@@ -1404,15 +1340,13 @@ def get_messages(partner_username):
     if not partner:
         return jsonify({'success': False, 'message': 'Partner not found.'}), 404
 
-    # 1. Fetch all messages between the two users
     messages = Message.query.filter(
         or_(
             (Message.sender_id == current_user.id) & (Message.recipient_id == partner.id),
             (Message.sender_id == partner.id) & (Message.recipient_id == current_user.id)
         )
-    ).order_by(Message.timestamp.asc()).all() # Load chronologically
+    ).order_by(Message.timestamp.asc()).all() 
     
-    # 2. Mark all messages *sent by the partner* to the current user as read
     Message.query.filter_by(
         sender_id=partner.id, 
         recipient_id=current_user.id, 
@@ -1420,7 +1354,6 @@ def get_messages(partner_username):
     ).update({'is_read': True}, synchronize_session='fetch')
     db.session.commit()
     
-    # 3. Serialize messages
     messages_list = [
         {
             'id': msg.id,
@@ -1460,13 +1393,12 @@ def send_message(partner_username):
         sender_id=current_user.id,
         recipient_id=partner.id,
         content=content,
-        is_read=False # Always start as unread
+        is_read=False 
     )
     
     db.session.add(new_message)
     db.session.commit()
     
-    # Return the new message data for immediate display on the frontend
     return jsonify({
         'success': True,
         'message_data': {

@@ -16,18 +16,14 @@ const BOOKMARKS_CONTAINER_ID = 'bookmarks-container';
 function createPostActionsHTML(postData) {
     const comments = postData.comments || 0;
     
-    // --- Define conditional classes and icons ---
     const isLiked = postData.isLiked;
     const isRetweeted = postData.isRetweeted;
     const isBookmarked = postData.isBookmarked;
     
-    // LIKE: Use 'fas' (solid) icon class if liked
     const likeIconClass = isLiked ? 'fas fa-heart' : 'far fa-heart';
     
-    // RETWEET: Often uses 'fas' regardless, relies on color from CSS 'active' class
     const retweetIconClass = 'fas fa-retweet'; 
     
-    // BOOKMARK: Use 'fas' (solid) icon class if bookmarked
     const bookmarkIconClass = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark'; 
 
     return `
@@ -61,11 +57,10 @@ async function handleLogin(event) {
     console.log(`Attempting login for: ${username}`);
     
     try {
-        // 1. Send data to Flask API (POST /api/login)
         const response = await fetch('/api/login', { 
             method: 'POST', 
             headers: {
-                'Content-Type': 'application/json' // Crucial: tell the server it's JSON
+                'Content-Type': 'application/json' 
             },
             body: JSON.stringify({ username, password }) 
         });
@@ -73,12 +68,9 @@ async function handleLogin(event) {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 2. Handle success
             console.log('Login successful.');
-            // Flask returned the redirect URL, use it
             window.location.href = data.redirect; 
         } else {
-            // 3. Handle failure (e.g., 401 Unauthorized)
             alert(`Login failed: ${data.message || 'Invalid credentials'}`);
         }
     } catch (error) {
@@ -88,7 +80,7 @@ async function handleLogin(event) {
 }
 
 async function handleSignup(event) {
-    event.preventDefault(); // Stop the default form submission
+    event.preventDefault(); 
 
     const username = document.getElementById('signup-username').value;
     const email = document.getElementById('signup-email').value;
@@ -96,14 +88,13 @@ async function handleSignup(event) {
     const confirmPassword = document.getElementById('signup-confirm-password').value;
     const messageElement = document.getElementById('signup-message');
 
-    messageElement.textContent = ''; // Clear previous messages
+    messageElement.textContent = ''; 
 
     if (password !== confirmPassword) {
         messageElement.textContent = 'Error: Passwords do not match.';
         return;
     }
     
-    // Basic password length check (optional, but good practice)
     if (password.length < 6) {
         messageElement.textContent = 'Error: Password must be at least 6 characters long.';
         return;
@@ -119,10 +110,8 @@ async function handleSignup(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Success! Redirect the user
             window.location.href = data.redirect;
         } else {
-            // Display server-side error (e.g., Username taken)
             messageElement.textContent = `Signup Failed: ${data.message}`;
         }
     } catch (error) {
@@ -131,7 +120,6 @@ async function handleSignup(event) {
     }
 }
 
-// --- Posting a New Chirp Handler ---
 async function handleNewChirp(event) {
     event.preventDefault();
     const form = event.target;
@@ -143,7 +131,6 @@ async function handleNewChirp(event) {
     }
 
     try {
-        // 1. Send data to Flask API (POST /api/posts)
         const response = await fetch('/api/posts', { 
             method: 'POST', 
             headers: {
@@ -155,10 +142,8 @@ async function handleNewChirp(event) {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 2. If successful, render the new post on the timeline
             const postData = data.post;
             
-            // Add initial reaction state (Flask doesn't send these, we assume false/0)
             postData.isLiked = false;
             postData.isRetweeted = false;
             postData.isBookmarked = false;
@@ -168,10 +153,9 @@ async function handleNewChirp(event) {
             const timeline = document.getElementById(TIMELINE_ID);
             
             if (timeline) {
-                timeline.prepend(postElement); // Add to the top
+                timeline.prepend(postElement); 
             }
             
-            // Clear the form
             form.elements.content.value = '';
         } else {
             alert(`Error posting chirp: ${data.message || 'Server error'}`);
@@ -182,21 +166,17 @@ async function handleNewChirp(event) {
     }
 }
 
-// --- Reaction Handler (Like, Retweet, Bookmark) ---
 async function handleReaction(event) {
     const actionButton = event.currentTarget;
     const postElement = actionButton.closest('.post');
     const postId = postElement.dataset.postId;
     const reactionType = actionButton.dataset.reactionType;
     
-    // 1. Select the icon element (the <i> tag)
     const iconElement = actionButton.querySelector('i');
     let countElement = actionButton.querySelector('span');
 
-    // Define the specific CSS class for styling (e.g., 'active-LIKE')
     const activeClass = `active-${reactionType}`;
     
-    // If it's a comment button, show comment modal instead
     if (reactionType === 'COMMENT') {
         showCommentModal(postId);
         return;
@@ -205,7 +185,6 @@ async function handleReaction(event) {
     console.log(`Attempting Reaction: ${reactionType} on Post ID: ${postId}`);
 
     try {
-        // 1. Send data to Flask API (POST /api/react)
         const response = await fetch('/api/react', { 
             method: 'POST', 
             headers: {
@@ -217,40 +196,27 @@ async function handleReaction(event) {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 2. Update the count and active state based on the response
             const newCount = data.newCount;
 
             if (data.toggled) {
-                // Reaction was ADDED: 
-                
-                // Add CSS classes for coloring and active state
                 actionButton.classList.add('active', activeClass);
                 
-                // Change icon to solid/filled version (e.g., 'far fa-heart' to 'fas fa-heart')
                 if (iconElement) {
-                    // Only applicable to LIKE and BOOKMARK (Retweet is usually always solid)
                     iconElement.classList.remove('far');
                     iconElement.classList.add('fas');
                 }
                 
             } else {
-                // Reaction was REMOVED:
-                
-                // Remove CSS classes for coloring and active state
                 actionButton.classList.remove('active', activeClass);
                 
-                // Change icon to outline version (e.g., 'fas fa-heart' to 'far fa-heart')
                 if (iconElement && reactionType !== 'RETWEET') {
-                    // Retweet icon typically remains 'fas' and changes color via CSS
                     iconElement.classList.remove('fas');
                     iconElement.classList.add('far');
                 }
             }
             
-            // Update the new count provided by the backend
             countElement.textContent = newCount > 0 ? newCount : '';
 
-            // SPECIAL CASE: Remove post from list if un-bookmarked on the bookmarks page
             if (reactionType === 'BOOKMARK' && window.location.pathname.startsWith('/bookmarks') && !data.toggled) {
                  postElement.remove(); 
             }
@@ -266,13 +232,12 @@ async function handleReaction(event) {
 
 // --- Delete Post Handler ---
 async function handleDeletePost(event) {
-    event.stopPropagation(); // Prevent triggering other click events
+    event.stopPropagation(); 
     
     const deleteBtn = event.currentTarget;
     const postElement = deleteBtn.closest('.post');
     const postId = deleteBtn.dataset.postId;
     
-    // Confirm deletion
     if (!confirm('Are you sure you want to delete this chirp? This will also delete all comments and reactions.')) {
         return;
     }
@@ -288,7 +253,6 @@ async function handleDeletePost(event) {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            // Remove the post from the DOM
             postElement.remove();
             console.log('Post deleted successfully');
         } else {
@@ -306,10 +270,8 @@ function createPostElement(postData) {
     postDiv.className = 'post';
     postDiv.dataset.postId = postData.id;
 
-    // Get profile image URL or use default from uploads folder
     let profileImageUrl = '/static/uploads/default-avatar.jpg';
     if (postData.profile_image && postData.profile_image.trim() !== '') {
-        // If profile_image already starts with 'static/', don't add it again
         if (postData.profile_image.startsWith('static/')) {
             profileImageUrl = `/${postData.profile_image}`;
         } else {
@@ -344,31 +306,28 @@ function createPostElement(postData) {
         </div>
     `;
     
-    // Attach event listeners to the new reaction buttons
     postDiv.querySelectorAll('.action-button').forEach(button => {
         button.addEventListener('click', handleReaction);
     });
     
-    // Attach event listener to delete button if it exists
     const deleteBtn = postDiv.querySelector('.delete-post-btn');
     if (deleteBtn) {
         deleteBtn.addEventListener('click', handleDeletePost);
     }
     
-    // Attach click listeners to avatar and username
     const avatar = postDiv.querySelector('.clickable-avatar');
     const username = postDiv.querySelector('.clickable-username');
     
     if (avatar) {
         avatar.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent post click
+            e.stopPropagation(); 
             window.location.href = `/profile/${postData.username}`;
         });
     }
     
     if (username) {
         username.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent post click
+            e.stopPropagation(); 
             window.location.href = `/profile/${postData.username}`;
         });
     }
@@ -377,15 +336,15 @@ function createPostElement(postData) {
 }
 
 // --- Comment Modal Functions ---
-let commentModalInitialized = false; // Flag to prevent double initialization
+let commentModalInitialized = false; 
 
 function setupCommentModal() {
-    if (commentModalInitialized) return; // Already set up, skip
+    if (commentModalInitialized) return; 
     
     const modal = document.getElementById('comment-modal');
-    if (!modal) return; // Modal doesn't exist on this page
+    if (!modal) return; 
     
-    commentModalInitialized = true; // Mark as initialized
+    commentModalInitialized = true; 
     
     const closeBtn = modal.querySelector('.close');
     
@@ -534,25 +493,23 @@ function updateCommentCount(postId, count) {
 }
 
 // --- Chirp Modal Functions ---
-let chirpModalInitialized = false; // Flag to prevent double initialization
+let chirpModalInitialized = false; 
 
 function setupChirpModal() {
-    if (chirpModalInitialized) return; // Already set up, skip
+    if (chirpModalInitialized) return; 
     
     const modal = document.getElementById('chirp-modal');
-    if (!modal) return; // Modal doesn't exist
+    if (!modal) return; 
     
-    chirpModalInitialized = true; // Mark as initialized
+    chirpModalInitialized = true; 
     
     const openBtn = document.getElementById('chirp-modal-btn');
     const closeBtn = modal.querySelector('.close');
     const form = document.getElementById('chirp-modal-form');
     
-    // Open modal when chirp button clicked
     if (openBtn) {
         openBtn.addEventListener('click', function() {
             modal.style.display = 'block';
-            // Focus on textarea
             const textarea = document.getElementById('chirp-modal-input');
             if (textarea) {
                 setTimeout(() => textarea.focus(), 100);
@@ -560,17 +517,14 @@ function setupChirpModal() {
         });
     }
     
-    // Close modal when X clicked
     if (closeBtn) {
         closeBtn.onclick = function() {
             modal.style.display = 'none';
-            // Clear textarea
             const textarea = document.getElementById('chirp-modal-input');
             if (textarea) textarea.value = '';
         };
     }
     
-    // Close modal when clicking outside
     window.addEventListener('click', function(event) {
         if (event.target == modal) {
             modal.style.display = 'none';
@@ -579,7 +533,6 @@ function setupChirpModal() {
         }
     });
     
-    // Handle form submission
     if (form) {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -602,16 +555,12 @@ function setupChirpModal() {
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Clear textarea
                     textarea.value = '';
                     
-                    // Close modal
                     modal.style.display = 'none';
                     
-                    // Show success message
                     alert('Chirp posted successfully!');
                     
-                    // If on timeline page, reload timeline
                     const timeline = document.getElementById('timeline');
                     if (timeline) {
                         loadTimeline();
@@ -677,76 +626,61 @@ async function loadBookmarks() {
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. --- Authentication Pages Setup (Login & Sign Up) ---
     
-    // Login Form Setup
     const loginForm = document.getElementById(LOGIN_FORM_ID);
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
     }
     
-    // Sign Up Form Setup
     const signupForm = document.getElementById(SIGNUP_FORM_ID);
     if (signupForm) {
         signupForm.addEventListener('submit', handleSignup);
     }
 
-    // 2. --- Timeline Page Setup ---
-    
-    // Handle New Chirp Form
     const newChirpForm = document.getElementById(NEW_CHIRP_FORM_ID);
     if (newChirpForm) {
         newChirpForm.addEventListener('submit', handleNewChirp);
     }
     
-    // Load timeline posts if we're on the timeline page
     const timeline = document.getElementById(TIMELINE_ID);
     if (timeline) {
         loadTimeline();
     }
     
-    // 3. --- Bookmarks Page Setup ---
     const bookmarksContainer = document.getElementById(BOOKMARKS_CONTAINER_ID);
     if (bookmarksContainer) {
         loadBookmarks();
     }
 
-    // 4. --- Profile Page Setup ---
     const profileHeader = document.getElementById(PROFILE_HEADER_ID);
     if (profileHeader) {
-        // Extract the target username from the page content
         const targetUsername = profileHeader.querySelector('h2')?.textContent || null;
         if (targetUsername) {
             loadProfile(targetUsername);
         }
     }
     
-    // 5. --- Relationships Page Setup ---
     const relationshipsContainer = document.getElementById('relationships-list-container');
     if (relationshipsContainer) {
         loadRelationships();
     }
     
-    // User search (only present on the 'Following' page)
     const searchForm = document.getElementById('user-search-form');
     if (searchForm) {
         searchForm.addEventListener('submit', handleUserRelationshipSearch);
     }
     
-    // 6. --- Setup Comment Modal (if it exists on the page) ---
     setupCommentModal();
     
-    // 7. --- Setup Chirp Modal (global) ---
     setupChirpModal();
 });
 
 /* --- PROFILE PAGE LOGIC --- */
 
-// Store current profile username globally for tab switching
 let currentProfileUsername = null;
 
 async function loadProfile(username) {
-    currentProfileUsername = username; // Store for tab switching
+    currentProfileUsername = username; 
     
     const profileDetailsContainer = document.getElementById(PROFILE_DETAILS_CONTAINER_ID);
     const profilePostsContainer = document.getElementById(PROFILE_POSTS_CONTAINER_ID);
@@ -758,12 +692,10 @@ async function loadProfile(username) {
         return;
     }
 
-    // 1. Set initial state (loading)
     profileDetailsContainer.innerHTML = '<p style="padding: 20px; text-align: center;">Loading profile...</p>';
     profilePostsContainer.innerHTML = '';
 
     try {
-        // 2. Fetch profile data from Flask API
         const response = await fetch(`/api/profile/${username}`);
         const data = await response.json();
 
@@ -773,17 +705,15 @@ async function loadProfile(username) {
             return;
         }
 
-        // 3. Build and Inject Profile Header Details
         const profile = data.profile;
         const isOwnProfile = profile.isOwnProfile;
 
         const followButtonHTML = isOwnProfile
-            ? '' // Don't show a follow button if it's the current user's own profile
+            ? '' 
             : profile.isFollowing
                 ? `<button class="secondary-button" id="follow-btn">Following</button>`
                 : `<button class="primary-button" id="follow-btn">Follow</button>`;
 
-        // Profile/banner images - clickable if own profile
         const bannerClass = isOwnProfile ? 'profile-banner clickable' : 'profile-banner';
         const avatarClass = isOwnProfile ? 'profile-avatar clickable' : 'profile-avatar';
         const bannerStyle = profile.bannerImage ? `background-image: url('${profile.bannerImage}'); background-size: cover; background-position: center;` : '';
@@ -819,7 +749,6 @@ async function loadProfile(username) {
             </div>
         `;
         
-        // Attach follow button listener (if not own profile)
         if (!isOwnProfile) {
             const followBtn = document.getElementById('follow-btn');
             if (followBtn) {
@@ -833,7 +762,6 @@ async function loadProfile(username) {
                         const data = await response.json();
                         
                         if (data.success) {
-                            // Update button state
                             if (data.action === 'followed') {
                                 followBtn.textContent = 'Following';
                                 followBtn.classList.remove('primary-button');
@@ -850,11 +778,9 @@ async function loadProfile(username) {
                 });
             }
         } else {
-            // Setup image upload listeners (only for own profile)
             setupProfileImageUpload();
         }
 
-        // 4. Update the stats bar (if it exists)
         const totalLikesElement = document.getElementById('total-likes');
         const totalRetweetsElement = document.getElementById('total-retweets');
         const totalCommentsElement = document.getElementById('total-comments');
@@ -863,7 +789,6 @@ async function loadProfile(username) {
         if (totalRetweetsElement) totalRetweetsElement.textContent = profile.totalRetweets || 0;
         if (totalCommentsElement) totalCommentsElement.textContent = profile.totalComments || 0;
 
-        // 5. Build and inject the user's post list
         const posts = data.posts;
         if (posts.length === 0) {
             profilePostsContainer.innerHTML = '<p style="padding: 20px; text-align: center;">This user has not posted anything yet.</p>';
@@ -880,11 +805,9 @@ async function loadProfile(username) {
         profileHeaderElement.innerHTML = '<h2>Network Error</h2><p>Could not load profile.</p>';
     }
     
-    // Setup tab click handlers
     setupProfileTabs(username);
 }
 
-// Setup profile tab click handlers
 function setupProfileTabs(username) {
     const tabs = document.querySelectorAll('.profile-tabs .tab-item');
     
@@ -892,14 +815,11 @@ function setupProfileTabs(username) {
         tab.addEventListener('click', async (e) => {
             e.preventDefault();
             
-            // Update active tab
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             
-            // Get tab type
             const tabType = tab.dataset.tab;
             
-            // Load appropriate content
             await loadProfilePosts(username, tabType);
         });
     });
@@ -948,7 +868,6 @@ async function loadProfilePosts(username, tabType) {
             return;
         }
         
-        // Get posts (either from data.posts directly or from data.profile.posts for chirps tab)
         const posts = tabType === 'chirps' ? data.posts : data.posts;
         
         if (posts.length === 0) {
@@ -997,17 +916,14 @@ function setupProfileImageUpload() {
     
     if (!bannerElement || !avatarElement || !bannerInput || !avatarInput) return;
     
-    // Banner click handler
     bannerElement.addEventListener('click', () => {
         bannerInput.click();
     });
     
-    // Avatar click handler
     avatarElement.addEventListener('click', () => {
         avatarInput.click();
     });
     
-    // Banner file selected
     bannerInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1015,7 +931,6 @@ function setupProfileImageUpload() {
         await uploadImage(file, 'banner', bannerElement);
     });
     
-    // Avatar file selected
     avatarInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1025,13 +940,11 @@ function setupProfileImageUpload() {
 }
 
 async function uploadImage(file, type, element) {
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
         alert('File is too large. Maximum size is 5MB.');
         return;
     }
     
-    // Validate file type
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
         alert('Invalid file type. Please upload a PNG, JPG, GIF, or WebP image.');
@@ -1044,7 +957,6 @@ async function uploadImage(file, type, element) {
     const endpoint = type === 'banner' ? '/api/upload/banner-image' : '/api/upload/profile-image';
     
     try {
-        // Show loading state
         element.style.opacity = '0.5';
         
         const response = await fetch(endpoint, {
@@ -1055,7 +967,6 @@ async function uploadImage(file, type, element) {
         const data = await response.json();
         
         if (data.success) {
-            // Update image immediately
             element.style.backgroundImage = `url('${data.image_url}')`;
             element.style.backgroundSize = 'cover';
             element.style.backgroundPosition = 'center';
@@ -1074,12 +985,7 @@ async function uploadImage(file, type, element) {
 }
 
 /* --- RELATIONSHIPS (FOLLOW/FOLLOWERS) LOGIC --- */
-/**
- * Renders a single user in the relationships list with a button.
- * @param {Object} userData - User data (username, isFollowing, etc.)
- * @param {string} viewType - 'following' or 'followers'
- * @param {boolean} canRemove - If the current user can remove/unfollow this user
- */
+
 function createUserElement(userData, viewType, canRemove) {
     const userDiv = document.createElement('div');
     userDiv.className = 'relationship-item';
@@ -1087,19 +993,21 @@ function createUserElement(userData, viewType, canRemove) {
 
     let buttonHTML = '';
     if (viewType === 'following' && canRemove) {
-        // Button to Unfollow the user
         const buttonText = userData.isFollowing ? 'Unfollow' : 'Follow';
         const buttonClass = userData.isFollowing ? 'secondary-button' : 'primary-button';
         buttonHTML = `<button class="${buttonClass} relationship-toggle-btn" data-username="${userData.username}">${buttonText}</button>`;
     } 
     else if (viewType === 'followers' && canRemove) {
-         // Button to Remove a follower (only possible if the target is following the current user)
         buttonHTML = `<button class="secondary-button relationship-remove-btn" data-username="${userData.username}">Remove</button>`;
     }
+
+    const profileImageUrl = userData.profile_image 
+        ? `/static/${userData.profile_image}` 
+        : '/static/uploads/default-avatar.jpg';
     
     userDiv.innerHTML = `
         <div class="user-info">
-            <div class="profile-avatar-small clickable-avatar" data-username="${userData.username}"></div>
+            <div class="profile-avatar-small clickable-avatar" data-username="${userData.username}" style="background-image: url('${profileImageUrl}'); background-size: cover; background-position: center;"></div>
             <div>
                 <strong class="clickable-username" data-username="${userData.username}">${userData.username}</strong>
                 <p class="handle">@${userData.username}</p>
@@ -1108,7 +1016,6 @@ function createUserElement(userData, viewType, canRemove) {
         ${buttonHTML}
     `;
     
-    // Attach click listener for the toggle/remove buttons
     const toggleBtn = userDiv.querySelector('.relationship-toggle-btn');
     if (toggleBtn) {
         toggleBtn.addEventListener('click', handleFollowToggle);
@@ -1118,7 +1025,6 @@ function createUserElement(userData, viewType, canRemove) {
         removeBtn.addEventListener('click', handleFollowerRemoval);
     }
     
-    // Attach click listeners to avatar and username to navigate to profile
     const avatar = userDiv.querySelector('.clickable-avatar');
     const username = userDiv.querySelector('.clickable-username');
     
@@ -1144,8 +1050,7 @@ function createUserElement(userData, viewType, canRemove) {
  */
 async function loadRelationships() {
     const pathParts = window.location.pathname.split('/');
-    // Path structure: /relationships/following/testuser or /relationships/followers/testuser
-    const viewType = pathParts[2]; // 'following' or 'followers'
+    const viewType = pathParts[2]; 
     const targetUsername = pathParts[3];
     const listContainer = document.getElementById('relationships-list-container');
     
@@ -1164,14 +1069,13 @@ async function loadRelationships() {
         }
         
         const usersList = data.users;
-        const currentUsername = data.current_user; // Current user's username from Flask
+        const currentUsername = data.current_user; 
         
         if (usersList.length === 0) {
              listContainer.innerHTML = `<p style="padding: 20px; text-align: center;">${targetUsername} has no ${viewType} yet.</p>`;
              return;
         }
 
-        // Store the full list for search filtering
         window.relationshipsData = {
             users: usersList,
             viewType: viewType,
@@ -1179,10 +1083,8 @@ async function loadRelationships() {
             targetUsername: targetUsername
         };
 
-        // Display all users initially
         displayRelationships(usersList, viewType, currentUsername, targetUsername);
 
-        // Setup search if on followers page
         if (viewType === 'followers') {
             setupFollowersSearch();
         }
@@ -1208,8 +1110,7 @@ function displayRelationships(usersList, viewType, currentUsername, targetUserna
     }
 
     usersList.forEach(user => {
-        // Determine if the current user can remove/unfollow this relationship
-        const canRemove = (targetUsername === currentUsername); // Only edit your own lists
+        const canRemove = (targetUsername === currentUsername);
         listContainer.appendChild(createUserElement(user, viewType, canRemove));
     });
 }
@@ -1230,7 +1131,6 @@ function setupFollowersSearch() {
         
         const { users, viewType, currentUsername, targetUsername } = window.relationshipsData;
         
-        // Filter users by username
         const filteredUsers = users.filter(user => 
             user.username.toLowerCase().includes(query)
         );
@@ -1238,10 +1138,8 @@ function setupFollowersSearch() {
         displayRelationships(filteredUsers, viewType, currentUsername, targetUsername);
     };
     
-    // Search on button click
     searchButton.addEventListener('click', performSearch);
     
-    // Search on Enter key
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -1249,7 +1147,6 @@ function setupFollowersSearch() {
         }
     });
     
-    // Real-time search as user types
     searchInput.addEventListener('input', performSearch);
 }
 
@@ -1271,13 +1168,11 @@ async function handleFollowToggle(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Update button text/class instantly
             if (data.action === 'followed') {
                 button.textContent = 'Unfollow';
                 button.classList.remove('primary-button');
                 button.classList.add('secondary-button');
             } else {
-                // For the Following list, if unfollowed, we remove the element
                 const item = button.closest('.relationship-item');
                 if (item) item.remove();
             }
@@ -1312,7 +1207,6 @@ async function handleFollowerRemoval(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Remove the element from the list
             const item = button.closest('.relationship-item');
             if (item) item.remove();
         } else {
@@ -1350,7 +1244,6 @@ async function handleUserRelationshipSearch(event) {
         }
         
         if (data.user) {
-            // Render the single user found
             const userElement = createUserElement(data.user, 'following', true);
             resultsContainer.appendChild(userElement);
         } else {
@@ -1365,7 +1258,6 @@ async function handleUserRelationshipSearch(event) {
 
 function formatTimestamp(isoString) {
     const date = new Date(isoString);
-    // Simple format: 'Dec 15, 2025, 3:25 AM'
     return date.toLocaleString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -1382,20 +1274,13 @@ function createNotificationElement(notificationData) {
     const notifDiv = document.createElement('div');
     notifDiv.className = 'notification-item';
     
-    // --- 1. Set the main click handler (Go to the AUTHOR's PROFILE) ---
-    // NOTE: This will handle clicks on the icon, time, and the message *text*
     notifDiv.onclick = () => {
-        // Navigate to the profile of the user who created the post
         window.location.href = `/profile/${notificationData.actor_username}`; 
     };
 
-    // --- 2. Build the message with a clickable PROFILE link ---
     let iconHTML = '';
-    let messageTextHTML = ''; // Renamed to clearly indicate it contains HTML
+    let messageTextHTML = ''; 
     
-    // Create the HTML link for the Actor's Profile
-    // We add an onclick listener to this link to stop the event from bubbling 
-    // up to the parent notifDiv's onclick handler, ensuring the user goes to the PROFILE.
     const actorLinkHTML = `
         <a href="/profile/${notificationData.actor_username}" 
            class="notification-actor-link"
@@ -1406,19 +1291,15 @@ function createNotificationElement(notificationData) {
 
     switch (notificationData.type) {
         case 'mention':
-            // Using a Font Awesome @ icon and primary color
             iconHTML = '<i class="fa-solid fa-at fa-lg" style="color: var(--color-primary);"></i>';
             messageTextHTML = `${actorLinkHTML} mentioned you in a chirp.`;
             break;
             
-        // 🌟 NEW CASE FOR NEW POST NOTIFICATION 🌟
         case 'new_post': 
-            // Using a Font Awesome icon that signifies a post (e.g., an envelope or pen)
             iconHTML = '<i class="fa-solid fa-feather-alt fa-lg" style="color: var(--color-secondary);"></i>';
             messageTextHTML = `${actorLinkHTML} published a new chirp.`;
             break;
 
-        // Future cases like 'like', 'follow', etc., would go here
         default:
             iconHTML = '<i class="fa-solid fa-bell fa-lg"></i>';
             messageTextHTML = `New activity from ${actorLinkHTML}.`;
@@ -1426,7 +1307,6 @@ function createNotificationElement(notificationData) {
 
     const timeString = formatTimestamp(notificationData.timestamp);
     
-    // Check if the notification is read and add a class
     if (!notificationData.is_read) {
         notifDiv.classList.add('notification-unread');
     }
@@ -1454,12 +1334,11 @@ async function loadNotifications() {
     container.innerHTML = '<p class="loading-message">Loading your notifications...</p>';
 
     try {
-        // Fetch data from the new Flask route /api/notifications
         const response = await fetch('/api/notifications');
         const data = await response.json();
         
         if (data.success && data.notifications.length > 0) {
-            container.innerHTML = ''; // Clear loading message
+            container.innerHTML = ''; 
             
             data.notifications.forEach(notifData => {
                 const notifElement = createNotificationElement(notifData);
@@ -1475,11 +1354,6 @@ async function loadNotifications() {
     }
 }
 
-// =======================================================
-// 🌟 END NEW NOTIFICATIONS LOGIC 🌟
-// =======================================================
-
-
 document.addEventListener('DOMContentLoaded', () => {
     setupCommentModal();
     setupChirpModal();
@@ -1490,9 +1364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// =======================================================
-// 💬 MESSAGING LOGIC (NEW) 💬
-// =======================================================
+//  MESSAGING LOGIC 
 
 // Helper function to update the chat header display
 function updateChatHeader(partnerUsername) {
@@ -1510,18 +1382,14 @@ function updateChatView(partnerUsername) {
     const messagesContainer = document.querySelector('.messages-layout-container');
     const body = document.body;
 
-    // 1. Update URL using History API (no page reload)
     history.pushState(null, null, `/messages/${partnerUsername}`);
     
-    // 2. Set the data attribute for CSS/JS state tracking
     body.setAttribute('data-partner-username', partnerUsername);
 
-    // 3. Apply the CSS transition class
     if (messagesContainer) {
         messagesContainer.classList.add('chat-active');
     }
 
-    // 4. Update Header and Load Content
     updateChatHeader(partnerUsername);
     loadMessageHistory(partnerUsername);
 }
@@ -1562,7 +1430,6 @@ function createConversationElement(convoData) {
     const div = document.createElement('div');
     div.className = 'conversation-item';
     
-    // *** MODIFIED: Use the new SPA transition function ***
     div.onclick = () => {
         updateChatView(convoData.partner_username);
     };
@@ -1575,9 +1442,7 @@ function createConversationElement(convoData) {
     
     let profileImageUrl = '/static/uploads/default-avatar.jpg';
     
-    // Use the correct data object: convoData
     if (convoData.profile_image && convoData.profile_image.trim() !== '') {
-        // If profile_image already starts with 'static/', don't add it again
         if (convoData.profile_image.startsWith('static/')) {
             profileImageUrl = `/${convoData.profile_image}`;
         } else {
@@ -1610,10 +1475,6 @@ async function loadMessageHistory(partnerUsername) {
     const sendForm = document.getElementById('send-message-form');
 
     if (!messagesContainer) return;
-
-    // Check if the chat panel is actually visible on the screen before loading (for desktop split view)
-    // If you are sticking with the overlay model, this check is less critical but good practice.
-    // However, if the element exists, we proceed with loading.
     
     messagesContainer.innerHTML = '<p class="loading-message">Loading messages...</p>';
 
@@ -1627,10 +1488,8 @@ async function loadMessageHistory(partnerUsername) {
                 const msgElement = createMessageElement(msg);
                 messagesContainer.appendChild(msgElement);
             });
-            // Scroll to the latest message
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
-            // Set up send form handler (Ensure form exists before setting handler)
             if (sendForm) {
                  sendForm.onsubmit = (e) => handleSendMessage(e, partnerUsername);
             }
@@ -1647,12 +1506,11 @@ async function loadMessageHistory(partnerUsername) {
  * Creates the HTML for a single message bubble.
  */
 function createMessageElement(messageData) {
-    // ... (This function remains unchanged) ...
     const div = document.createElement('div');
     const isOutgoing = messageData.is_outgoing;
     div.className = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
     
-    const timeString = formatTimestamp(messageData.timestamp); // Assuming formatTimestamp exists
+    const timeString = formatTimestamp(messageData.timestamp); 
 
     div.innerHTML = `
         <p>${messageData.content}</p>
@@ -1665,7 +1523,6 @@ function createMessageElement(messageData) {
  * Handles the submission of the message form.
  */
 async function handleSendMessage(e, partnerUsername) {
-    // ... (This function remains unchanged) ...
     e.preventDefault();
     const messageInput = document.getElementById('message-input');
     const content = messageInput.value.trim();
@@ -1684,8 +1541,8 @@ async function handleSendMessage(e, partnerUsername) {
         if (data.success) {
             const msgElement = createMessageElement(data.message_data);
             messagesContainer.appendChild(msgElement);
-            messageInput.value = ''; // Clear input
-            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom
+            messageInput.value = ''; 
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; 
         } else {
             alert('Failed to send message: ' + data.message);
         }
@@ -1744,7 +1601,6 @@ function createSearchResultItem(userData) {
     const div = document.createElement('div');
     div.className = 'search-result-item conversation-item'; 
 
-    // *** MODIFIED: Use the new SPA transition function ***
     div.onclick = () => {
         updateChatView(userData.username);
     };
@@ -1752,7 +1608,6 @@ function createSearchResultItem(userData) {
     let profileImageUrl = '/static/uploads/default-avatar.jpg';
     
     if (userData.profile_image && userData.profile_image.trim() !== '') {
-        // If profile_image already starts with 'static/', don't add it again
         if (userData.profile_image.startsWith('static/')) {
             profileImageUrl = `/${userData.profile_image}`;
         } else {
@@ -1771,51 +1626,38 @@ function createSearchResultItem(userData) {
     return div;
 }
 
-// =======================================================
 // MAIN ENTRY POINT AND EVENT LISTENERS
-// =======================================================
 
 document.addEventListener('DOMContentLoaded', () => { 
     const messagesContainer = document.querySelector('.messages-layout-container');
     const body = document.body;
     
-    // --- Message Initialization ---
-
-    // 1. Initialize Conversations List (Inbox)
     const conversationsContainer = document.getElementById('conversations-list-container');
     if (conversationsContainer) {
         loadConversations();
     }
 
-    // 2. Initialize Specific Message History (for /messages/<username> page)
     const messageHistoryContainer = document.getElementById('message-history-container');
     if (messageHistoryContainer) {
         const partnerUsername = document.body.dataset.partnerUsername; 
         if (partnerUsername) {
-            // If page loaded on /messages/<username> (full reload), load the history
             loadMessageHistory(partnerUsername);
         }
     }
     
-    // 3. Handle Overlay Transition on initial load (if loaded via full reload)
-    // This applies the chat-active class if the partner is in the URL
     if (messagesContainer && document.body.dataset.partnerUsername) {
         messagesContainer.classList.add('chat-active');
     }
 
-    // 4. Handle Back Button Click (Reverts SPA to Inbox view)
     const backButton = document.querySelector('.chat-header .back-button');
     if (backButton) {
         backButton.addEventListener('click', (event) => {
-             event.preventDefault(); // Stop the default Flask link navigation
-            // FORCED RELOAD: Navigates back to the base messages URL, 
-            // which resets the page state completely.
+            event.preventDefault(); 
             window.location.href = '/messages'; 
         });
     }
 
 
-    // --- Search Input Handlers ---
     const searchInput = document.getElementById('new-message-search-input');
     const searchForm = document.getElementById('new-message-search-form');
     
@@ -1824,7 +1666,6 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', handleUserSearch);
         
         searchInput.addEventListener('focus', () => {
-             // Already handled by handleUserSearch, but ensures immediate visibility
              document.getElementById('search-results-list').style.display = 'block';
              document.getElementById('conversation-list').style.display = 'none';
         });
@@ -1839,14 +1680,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// =======================================================
-// 🔍 SEARCH PAGE LOGIC 🔍
-// =======================================================
+// SEARCH PAGE LOGIC 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we're on the search page
     const searchForm = document.getElementById('search-form');
-    if (!searchForm) return; // Not on search page
+    if (!searchForm) return; 
     
     const searchInput = document.getElementById('search-query-input');
     const usersResults = document.getElementById('users-results');
@@ -1856,10 +1694,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTab = 'users';
     let currentQuery = '';
     
-    // Tab switching
     tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Update active tab
             tabButtons.forEach(b => {
                 b.classList.remove('active');
                 b.style.borderBottomColor = 'transparent';
@@ -1869,7 +1705,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.borderBottomColor = 'var(--primary-color)';
             btn.style.color = 'var(--primary-color)';
             
-            // Switch content
             currentTab = btn.dataset.tab;
             if (currentTab === 'users') {
                 usersResults.style.display = 'block';
@@ -1879,14 +1714,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 chirpsResults.style.display = 'block';
             }
             
-            // Re-run search if there's a query
             if (currentQuery) {
                 performSearch(currentQuery);
             }
         });
     });
     
-    // Search form submission
     searchForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const query = searchInput.value.trim();
@@ -1896,7 +1729,6 @@ document.addEventListener('DOMContentLoaded', () => {
         await performSearch(query);
     });
     
-    // Perform the search
     async function performSearch(query) {
         const resultsContainer = currentTab === 'users' ? usersResults : chirpsResults;
         resultsContainer.innerHTML = '<p style="padding: 20px; text-align: center;">Searching...</p>';
@@ -1918,13 +1750,11 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsContainer.innerHTML = '';
             
             if (currentTab === 'users') {
-                // Display users
                 data.results.forEach(user => {
                     const userElement = createSearchUserElement(user);
                     resultsContainer.appendChild(userElement);
                 });
             } else {
-                // Display chirps
                 data.results.forEach(post => {
                     const postElement = createPostElement(post);
                     resultsContainer.appendChild(postElement);
@@ -1937,7 +1767,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Create user search result element
     function createSearchUserElement(userData) {
         const userDiv = document.createElement('div');
         userDiv.className = 'relationship-item';
@@ -1960,19 +1789,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="${buttonClass} search-follow-btn" data-username="${userData.username}">${buttonText}</button>
         `;
         
-        // Avatar click
         const avatar = userDiv.querySelector('.clickable-avatar');
         avatar.addEventListener('click', () => {
             window.location.href = `/profile/${userData.username}`;
         });
         
-        // Username click
         const username = userDiv.querySelector('.clickable-username');
         username.addEventListener('click', () => {
             window.location.href = `/profile/${userData.username}`;
         });
         
-        // Follow button click
         const followBtn = userDiv.querySelector('.search-follow-btn');
         followBtn.addEventListener('click', async () => {
             try {
